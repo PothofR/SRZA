@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+<title>Stichting Recreatief Zaalvoetbal Almere</title>	
+
+<!-- CSS Style -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet" media="screen" />
+<link href="https://cdn.jsdelivr.net/npm/bootswatch@4.5.2/dist/flatly/bootstrap.min.css" rel="stylesheet" media="screen" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/open-iconic/1.1.1/font/css/open-iconic-bootstrap.min.css" rel="stylesheet" media="screen" />
+<style>
+.table-filter tbody tr td {
+	padding: 5px;
+	vertical-align: middle;
+	border-top-color: #eee;
+}
+.table-filter2 tbody tr td {
+	padding: 5px;
+	vertical-align: middle;
+	border-top-color: #eee;
+}
+input[type=checkbox]
+{
+  /* Double-sized Checkboxes */
+  -ms-transform: scale(1.5); /* IE */
+  -moz-transform: scale(1.5); /* FF */
+  -webkit-transform: scale(1.5); /* Safari and Chrome */
+  -o-transform: scale(1.5); /* Opera */
+}
+.form-control[readonly] {
+	width: 43px;
+	text-align:center;
+}	
+.inputtotaal{
+	width: 43px;
+	text-align:center;
+}
+.geschorst{
+	background-color: #E74C3C;
+}
+</style>
+
+<!-- JS Loading -->
+<script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.9.2/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.min.js"></script>
+<script>
+$(document).ready(function () {
+
+    $('.ckbox').on('click', function () {
+      $(this).parents('tr').toggleClass('selected');
+    });
+
+    $('.btn-filter').on('click', function () {
+      var $target = $(this).data('target');
+      if ($target != 'all') {
+        $('.tablethuis tr').css('display', 'none');
+        $('.tablethuis tr[class="' + $target + '"]').fadeIn('slow');
+      } else {
+        $('.tablethuis tr').css('display', 'none').fadeIn('slow');
+      }
+    });
+    $('.btn-filter2').on('click', function () {
+      var $target = $(this).data('target');
+      if ($target != 'all') {
+        $('.tableuit tr').css('display', 'none');
+        $('.tableuit tr[class="' + $target + '"]').fadeIn('slow');
+      } else {
+        $('.tableuit tr').css('display', 'none').fadeIn('slow');
+      }
+    });
+ });
+</script> 
+</head>
+<body> 
+		
+<?php
+				
+$q=$_GET["q"];
+if ($q <> "")
+{
+	require_once($_SERVER['DOCUMENT_ROOT'].'/wp-blog-header.php');
+	global $current_user;
+	wp_get_current_user();
+	$url = site_url();
+	
+	if ( is_user_logged_in() ) 
+	{
+		global $wp_roles;
+		$current_user = wp_get_current_user();
+		$roles = $current_user->roles;
+		$role = array_shift($roles);
+
+		// Controleer of de juiste persoon de wedstrijd aan het verwerken is.
+		if ($role == 'administrator' || $role == 'zaalcommissaris' || $role == 'scheidsrechter' || $role == 'bestuur' || $role == 'beheerder')
+		{
+	
+			// Controleren of de wedstrijd al verwerkt is.	
+			$sqlcheckwedstrijd = $wpdb->get_results	("
+													SELECT wedstrijdid 
+													FROM srza_Livescore 
+													WHERE WedstrijdID = '" . $q . "'
+													AND Afgelopen = '1'
+													", ARRAY_A
+													);
+			$check =  $wpdb->num_rows;
+
+			// Alle "statische" gegevens ophalen
+			$sql1 = $wpdb->get_results	
+					("	
+					SELECT 
+					W.ID 							            AS Wedstrijdnummer, 
+					DATE_FORMAT(W.Wedstrijddatum,'%d-%m-%Y') 	AS Wedstrijddatum,
+					DATE_FORMAT(W.Wedstrijddatum,'%Y-%m-%d')  	AS Wedstrijddatum2,					
+					H.Naam 										AS Hal, 
+					W.Halnummer 								AS Halnummer,
+					P.Naam	 									AS Poule, 
+					W.Begintijd 								AS Begintijd, 
+					W.Eindtijd 									AS Eindtijd,
+					W.Volgnummer 								AS Volgnummer,
+					TT.Naam 									AS Thuisteam, 
+					UT.Naam 									AS Uitteam,  
+					W.TeamRelatienummerT 						AS ThuisteamID, 
+					W.TeamRelatienummerU						AS UitteamID, 
+					SRT.Email 									AS Thuisemail, 
+					SRU.Email 									AS Uitemail,
+					S.Referentie 								AS Scheids
+					FROM srza_Wedstrijd W
+					INNER JOIN srza_Hallen 		AS H 	ON H.Halnummer 			= W.Halnummer
+					INNER JOIN srza_Poules 		AS P 	ON P.Poulenummer 		= W.Poule
+					INNER JOIN srza_Teams 		AS TT 	ON TT.Relatienummer 	= W.TeamRelatienummerT
+					INNER JOIN srza_Teams 		AS UT 	ON UT.Relatienummer 	= W.TeamRelatienummerU
+					INNER JOIN srza_Relaties 	AS SRT 	ON SRT.Relatienummer 	= W.TeamRelatienummerT
+					INNER JOIN srza_Relaties 	AS SRU 	ON SRU.Relatienummer 	= W.TeamRelatienummerU
+					INNER JOIN srza_Relaties 	AS S 	ON S.Relatienummer 		= W.Scheidsrechter
+					WHERE W.ID = '" . $q . "'
+					", ARRAY_A
+					);
+			
+			foreach ($sql1 as $row)
+				{
+				$Wedstrijdnummer = $row['Wedstrijdnummer'];
+				$Wedstrijddatum = $row['Wedstrijddatum'];
+				$Wedstrijddatum2 = $row['Wedstrijddatum2'];									
+				$Hal = $row['Hal'];
+				$Halnummer = $row['Halnummer'];
+				$Poule = $row['Poule'];
+				$Begintijd = $row['Begintijd'];
+				$Eindtijd = $row['Eindtijd'];
+				$Volgnummer = $row['Volgnummer'];
+				$Thuisteam = $row['Thuisteam'];
+				$Uitteam = $row['Uitteam'];
+				$ThuisteamID = $row['ThuisteamID'];
+				$UitteamID = $row['UitteamID'];
+				$Thuisemail = $row['Thuisemail'];
+				$Uitemail = $row['Uitemail'];
+				$Scheids = $row['Scheids'];
+				}
+
+			// Stamgegevens ophalen
+			$sqlStamGegevens = $wpdb->get_results	
+					("	
+					SELECT 
+					BoeteBijVerzuimGrensrechter		            AS BoeteGrens, 
+					BoeteBijVerzuimTijdw					 	AS BoeteTijdwaarneming,
+					BoeteBijLaatTijdw							AS BoeteTijdwaarnemingLaat,
+					BoeteNietOpDagen							AS BoeteNietOpDagen					
+					FROM srza_Stamgegevens W
+					", ARRAY_A
+					);
+			
+			foreach ($sqlStamGegevens as $row2)
+				{
+				$Boetegrens		 			= $row2['BoeteGrens'];
+				$BoeteTijdwaarneming 		= $row2['BoeteTijdwaarneming'];
+				$BoeteTijdwaarnemingLaat 	= $row2['BoeteTijdwaarnemingLaat'];	
+				$BoeteNietOpDagen			= $row2['BoeteNietOpDagen'];								
+				}			
+
+			// Bepalen of het de laatste wedstrijd is
+			$sqlLastGame = $wpdb->get_results	
+					("	
+					SELECT ID , 
+					CASE WHEN '" . $q . "' = MAX(ID) 
+					THEN TRUE ELSE FALSE END AS IsLast
+					FROM srza_Wedstrijd
+					WHERE Wedstrijddatum =  CURDATE()
+					AND Halnummer =  '" . $Halnummer . "'
+					ORDER BY ID ASC 					
+					", ARRAY_A
+					);									
+			foreach ($sqlLastGame as $row)
+			{
+				$Lastgamecheck = $row['IsLast'];
+			}				
+			
+			if ($Lastgamecheck == "1")
+			{	
+				$nextpage = "" . $url . "/eindverwerken/?wedstrijddag=" . $Wedstrijddatum2 . "&hal=" . $Halnummer . "";
+			}
+				else
+			{
+				$sqlNextgame = $wpdb->get_results	
+					("	
+					SELECT min(ID) AS wedstrijdnummer
+					FROM srza_Wedstrijd
+					WHERE Wedstrijddatum =  CURDATE()
+					AND Halnummer =  '" . $Halnummer . "'
+					AND ID > '" . $q . "'
+					AND srza_Wedstrijd.AfwezigTeamT = '0' AND srza_Wedstrijd.AfwezigTeamU ='0'
+									
+					", ARRAY_A
+					);									
+				
+				foreach ($sqlNextgame as $row)
+				{
+					$volgendewedstrijd = $row['wedstrijdnummer'];			
+				}
+
+				$nextpage = "" . $url . "/custom/wedstrijdverwerking.php?q=" . $volgendewedstrijd . "";
+			}				
+			// Als de wedstrijd niet verwerkt is gaan we de gegevens ophalen van de spelers en de verwerking starten
+			if ($check == "0")
+			{
+				// Query voor thuisteam
+				$sql3 = $wpdb->get_results	
+						("	
+						SELECT 
+						Deelnemer 				AS Spelersnummer, 
+						MinutenStrafVerwerkt 	AS Strafminuten, 
+						CONCAT_WS(' ', Voorletters, Voorvoegsels, Naam) AS Naam,
+						Foto 					AS Foto
+						FROM srza_Deelnemers
+						WHERE TeamRelatieNummer = '" . $ThuisteamID . "'
+						AND Ingangsdatum <= CURRENT_DATE
+						ORDER BY Deelnemer
+						", ARRAY_A
+						);	
+				$AantalDeelnemersT = $wpdb->num_rows;
+				
+				// Query voor uitteam
+				$sql4 = $wpdb->get_results	
+						("	
+						SELECT 
+						Deelnemer 				AS U_Spelersnummer, 
+						MinutenStrafVerwerkt 	AS U_Strafminuten,
+						CONCAT_WS(' ', Voorletters, Voorvoegsels, Naam) AS U_Naam,						 
+						Foto 					AS U_Foto
+						FROM srza_Deelnemers
+						WHERE TeamRelatieNummer = '" . $UitteamID . "'
+						AND Ingangsdatum <= CURRENT_DATE
+						ORDER BY Deelnemer
+						", ARRAY_A
+						);	
+				$AantalDeelnemersU = $wpdb->num_rows;
+
+				// Livescore controleren en dan bepalen of er een update moet gebeuren of het aanmaken
+				$sqlcheckwedstrijd = $wpdb->get_results	
+						("
+						SELECT WedstrijdID 
+						FROM srza_Livescore 
+						WHERE WedstrijdID = '" . $q . "'
+						", ARRAY_A
+						);
+				$check2 =  $wpdb->num_rows;
+		
+				$begintijd2 = date("H:i:s");
+
+				if ($check2 == "0")
+				{
+				$wpdb->insert( 
+					'srza_Livescore', 
+					array( 
+						'Afgelopen' 	=> '0',
+						'WedstrijdID' 	=> $q,
+						'Begonnen'		=> '1',
+						'Begintijd'		=> $begintijd2
+					)
+					);
+				}
+				else
+				{
+				$wpdb->update( 
+					'srza_Livescore', 
+					array( 
+						'Afgelopen'     => '0'	// string
+					), 
+					array( 'WedstrijdID' => $q )
+				);	
+				}						
+				?>
+
+
+				<div class="container-fluid">
+					<form action="" id="verwerken" method="post" enctype="multipart/form-data">
+						<div class="row" align="center">	
+							<div class="col-12">
+								Wedstrijdnr: <?php echo $Wedstrijdnummer; ?> | 
+								Datum: <?php echo $Wedstrijddatum; ?> | 
+								Aanvang: <?php echo $Begintijd; ?> | 
+								<?php if ($Pouleid <> "BK"){ ?>
+								Klasse: <?php echo $Poule; ?> | 
+								<?php } else { ?>
+								Bekerwedstrijd | 
+								<?php } ?>
+								Hal: <?php echo $Hal; ?> | 
+								Scheidsrechter: <?php echo $Scheids; ?>
+							</div>
+						</div>
+						<div class="row" align="center" >
+							&nbsp;
+						</div>						
+						<div class="row">		
+							<div class="col-5 h4" align="right">
+									<?php echo $Thuisteam; ?>
+							</div>
+							<div class="col-2 h4" align="center">
+								<input name="Doelpuntthuistotaal[]" type="doelp" min="0" max="99" id="doelpuntthuistotaal" class="input-number input inputtotaal" value="0" min="0" max="99" readonly>
+								&nbsp;-&nbsp;
+								<input name="Doelpuntuittotaal[]" type="doelp" min="0" max="99" id="doelpuntuittotaal" class="input-number input inputtotaal" value="0" min="0" max="99" readonly>
+							</div>
+							<div class="col-5 h4" align="left">
+								<?php echo $Uitteam; ?>	
+							</div>
+						</div>	
+						<div class="row" align="center" >	
+							<div class="col"></div>		
+							<div class="col align-self-center">
+								<div class="content"><br />
+									<div class="timer"></div>
+								</div>		
+							</div>
+							<div class="col"></div>							
+						</div>
+						<div class="row" align="center" >
+							&nbsp;
+						</div>						
+						<div class="row" align="center">
+							<div class="col-6" align="left">
+								<div class="btn-group">
+										<button type="button" class="btn btn-success btn-filter" data-target="selected">Aanwezig</button>
+										<button type="button" class="btn btn-secondary btn-filter" data-target="all">Alles</button>
+								</div>
+							</div>		
+							<div class="col-6" align="right">
+								<div class="btn-group">
+										<button type="button" class="btn btn-success btn-filter2" data-target="selected">Aanwezig</button>
+										<button type="button" class="btn btn-secondary btn-filter2" data-target="all">Alles</button>
+								</div>
+							</div>
+						</div>																	
+						<div class="row" align="center">
+							<div class="col-6">
+								<div class="table-responsive">	
+									<table class="table tablethuis table-filter table-condensed">					
+										<thead>
+											<tr class="selected">
+												<th>Foto</th>
+												<th>Naam</th>
+												<th>Aanw</th>
+												<th>Doelpunt</th>
+												<th>Groen</th>
+												<th>Geel</th>
+												<th>Rood</th>
+											</tr>
+										</thead>
+										<tbody>
+										<?php
+										$t = 0;
+										foreach ($sql3 as $row3)
+										{
+											$T_Naam 			= $row3['Naam'];
+											$T_Foto 			= $row3['Foto'];
+											$T_Spelersnummer 	= $row3['Spelersnummer'];
+											$T_Strafminuten		= $row3['Strafminuten'];
+
+											$wpdb->query("	INSERT IGNORE INTO srza_WedstrijdStatistieken 
+															SET 
+														    Wedstrijdid			= '" . $q . "',
+														    Deelnemer			= '" . $T_Spelersnummer . "',
+														    TeamRelatienummer 	= '" . $ThuisteamID . "'
+								 							");		
+
+											if ($T_Strafminuten >= '10')
+											{
+												?>
+													<tr class="geschorst">
+												<?php
+											}
+											else
+											{
+												?>
+												<tr class="">  		  	
+												<?php
+											}
+										?>											
+												<td>
+													<img src="<?php echo $row3['Foto'];?>" width="49px" height="61px" alt="<?php echo $row3['Naam']; ?>" class="rounded float-left" />																	
+												</td>
+												<td>
+													<input name="Naamthuis[]" type="hidden" id="NaamCombithuis" value="<?php echo $row3['Naam']; ?>"  />
+													<p class="small">
+													<?php echo $row3['Naam']; ?>
+													<br />
+													<?php echo $row3['Spelersnummer']; ?>
+													<input name="Deelnemerthuis[]" type="hidden" id="Deelnemerthuis" size="10" value="<?php echo $row3['Spelersnummer']; ?>" readonly>													
+													</p>
+												</td>
+												<td>
+													<div class="ckbox" align="center">
+														<input name="Aanwezigthuis[]" type="checkbox" value="<?php echo $row3['Spelersnummer']; ?>" onclick="SpelerAanwezig(<?php echo $row3['Spelersnummer']; ?>)"/>
+													</div>	
+												</td>												
+												<td>			
+													<div class="input-group">	
+														<div class="btn-group" role="group" aria-label="Basic example">           
+															<button type="button" class="btn btn-danger btn-number1" data-type="minus" data-field="doelpuntthuis<?php echo $row3['Spelersnummer']; ?>" id="<?php echo $row3['Spelersnummer']; ?>" onclick="decr('doelpuntthuis<?php echo $row3['Spelersnummer']; ?>', 'thuis'); Doelpuntmin(<?php echo $row3['Spelersnummer']; ?> , 'DoelpuntenT')" value="-">
+																-
+															</button>
+															<input type="doelp" name="Doelpuntthuis[]" class="form-control input-number input" value="0" min="0" max="99" id="doelpuntthuis<?php echo $row3['Spelersnummer']; ?>" readonly/>	
+															<button type="button" class="btn btn-success btn-number1 " data-type="plus" data-field="doelpuntthuis<?php echo $row3['Spelersnummer']; ?>" id="<?php echo $row3['Spelersnummer']; ?>" onclick="incr('doelpuntthuis<?php echo $row3['Spelersnummer']; ?>', 'thuis'); Doelpuntplus(<?php echo $row3['Spelersnummer']; ?> , 'DoelpuntenT' )" value="+">
+																+
+															</button>											
+														</div>
+													</div>
+												</td>
+												<td>
+													<div class="input-group">	
+														<div class="btn-group" role="group" aria-label="Basic example">           
+															<button type="button" class="btn btn-info btn-number2" data-type="minus" data-field="strafthuis<?php echo $row3['Spelersnummer']; ?>" id="<?php echo $row3['Spelersnummer']; ?>" onclick="decrstraf('strafthuis<?php echo $row3['Spelersnummer']; ?>', 'thuis'); Strafminutenmin(<?php echo $row3['Spelersnummer']; ?> , '2')" value="-2">
+																-2
+															</button>
+															<input type="strafm" name="Strafthuis[]" class="form-control input-number input" value="0" min="0" max="99" id="strafthuis<?php echo $row3['Spelersnummer']; ?>" readonly/>	
+															<button type="button" class="btn btn-success btn-number2" data-type="plus" data-field="strafthuis<?php echo $row3['Spelersnummer']; ?>" id="<?php echo $row3['Spelersnummer']; ?>" onclick="incrstraf('strafthuis<?php echo $row3['Spelersnummer']; ?>', 'thuis'); Strafminutenplus(<?php echo $row3['Spelersnummer']; ?> , '2')" value="+2">
+																+2
+															</button>														
+														</div>
+													</div>
+												</td>
+												<td>
+													<div class="input-group">
+														<div class="btn-group" role="group" aria-label="Basic example">  
+															<button type="button" class="btn btn-info btn-number5" data-type="minus" data-field="strafthuis<?php echo $row3['Spelersnummer']; ?>" id="<?php echo $row3['Spelersnummer']; ?>" onclick="decrstraf2('strafthuis<?php echo $row3['Spelersnummer']; ?>', 'thuis'); Strafminutenmin(<?php echo $row3['Spelersnummer']; ?> , '5')" value="-5">
+																-5
+															</button>														                 
+															<button type="button" class="btn btn-warning btn-number5" data-type="plus" data-field="strafthuis<?php echo $row3['Spelersnummer']; ?>" id="<?php echo $row3['Spelersnummer']; ?>" onclick="incrstraf2('strafthuis<?php echo $row3['Spelersnummer']; ?>', 'thuis'); Strafminutenplus(<?php echo $row3['Spelersnummer']; ?> , '5')" value="+5">
+																+5
+															</button>
+														</div>
+													</div>
+												</td>
+												<td>
+													<div class="ckbox" align="center">
+														<input type="hidden" name="Roodthuis[]" value="0" />
+														<input type="checkbox" name="Roodthuis[]" id="roodthuis"  value="10" onclick="Strafminuten10(<?php echo $row3['Spelersnummer']; ?>)" />												
+													</div>
+												</td>
+											</tr>
+											<?php
+											$t++;
+											}
+											?>							
+										</tbody>
+									</table>
+								</div>
+							</div>
+							<div class="col-6">
+								<div class="table-responsive">
+									<table class="table tableuit table-filter2 table-condensed">					
+										<thead>
+											<tr class="selected">
+												<th>Foto</th>
+												<th>Naam</th>
+												<th>Aanw</th>
+												<th>Doelpunt</th>
+												<th>Groen</th>
+												<th>Geel</th>
+												<th>Rood</th>
+											</tr>
+										</thead>
+										<tbody>
+										<?php
+										$r = 0;
+										foreach ($sql4 as $row4)
+										{
+											$U_Naam 			= $row4['U_Naam'];
+											$U_Foto 			= $row4['U_Foto'];
+											$U_Spelersnummer 	= $row4['U_Spelersnummer'];
+											$U_Strafminuten		= $row4['U_Strafminuten'];
+
+											$wpdb->query("	INSERT IGNORE INTO srza_WedstrijdStatistieken 
+																SET 
+															    Wedstrijdid			= '" . $q . "',
+															    Deelnemer			= '" . $U_Spelersnummer . "',
+															    TeamRelatienummer 	= '" . $UitteamID . "'
+									 							");	
+
+											if ($U_Strafminuten >= '10')
+											{
+												?>
+													<tr class="geschorst">
+												<?php
+											}
+											else
+											{
+												?>
+													<tr class="">   		  	
+												<?php
+											}
+										?>											
+												<td>
+													<img src="<?php echo $row4['U_Foto'];?>" height="61px" width="49px" alt="<?php echo $row4['U_Naam']; ?>" class="rounded float-left" />																	
+												</td>
+												<td>
+													<input name="Naamuit[]" type="hidden" id="NaamCombiuit" value="<?php echo $row4['U_Naam']; ?>"  />
+													<p class="small">
+													<?php echo $row4['U_Naam']; ?>
+													<br />
+													<?php echo $row4['U_Spelersnummer']; ?>
+													</p>
+													<input name="Deelnemeruit[]" type="hidden" id="Deelnemeruit" size="10" value="<?php echo $row4['U_Spelersnummer']; ?>" readonly>
+												</td>
+												<td>
+													<div class="ckbox" align="center">
+														<input name="Aanweziguit[]" type="checkbox" value="<?php echo $row4['U_Spelersnummer']; ?>" onclick="SpelerAanwezig(<?php echo $row4['U_Spelersnummer']; ?>)"/>
+													</div>	
+												</td>
+												<td>			
+													<div class="input-group">	
+														<div class="btn-group" role="group" aria-label="Basic example">           
+															<button type="button" class="btn btn-danger btn-number1" data-type="minus" data-field="doelpuntuit<?php echo $row4['U_Spelersnummer']; ?>" id="<?php echo $row4['U_Spelersnummer']; ?>" onclick="decr('doelpuntuit<?php echo $row4['U_Spelersnummer']; ?>', 'uit'); Doelpuntmin(<?php echo $row3['Spelersnummer']; ?> , 'DoelpuntenU')" value="-">
+																-
+															</button>
+															<input type="doelp" name="Doelpuntuit[]" class="form-control input-number input" value="0" min="0" max="99" id="doelpuntuit<?php echo $row4['U_Spelersnummer']; ?>" readonly/>	
+															<button type="button" class="btn btn-success btn-number1 " data-type="plus" data-field="doelpuntuit<?php echo $row4['U_Spelersnummer']; ?>" id="<?php echo $row4['U_Spelersnummer']; ?>" onclick="incr('doelpuntuit<?php echo $row4['U_Spelersnummer']; ?>', 'uit'); Doelpuntplus(<?php echo $row4['U_Spelersnummer']; ?> , 'DoelpuntenU')" value="+">
+																+
+															</button>											
+														</div>
+													</div>
+												</td>	
+												<td>
+													<div class="input-group">	
+														<div class="btn-group" role="group" aria-label="Basic example">           
+															<button type="button" class="btn btn-info btn-number2" data-type="minus" data-field="strafuit<?php echo $row4['U_Spelersnummer']; ?>" id="<?php echo $row4['U_Spelersnummer']; ?>" onclick="decrstraf('strafuit<?php echo $row4['U_Spelersnummer']; ?>', 'uit'); Strafminutenmin(<?php echo $row4['U_Spelersnummer']; ?> , '2')" value="-2">
+																-2
+															</button>
+															<input type="strafm" name="Strafuit[]" class="form-control input-number input" value="0" min="0" max="99" id="strafuit<?php echo $row4['U_Spelersnummer']; ?>" readonly/>	
+															<button type="button" class="btn btn-success btn-number2" data-type="plus" data-field="strafuit<?php echo $row4['U_Spelersnummer']; ?>" id="<?php echo $row4['U_Spelersnummer']; ?>" onclick="incrstraf('strafuit<?php echo $row4['U_Spelersnummer']; ?>', 'uit'); Strafminutenplus(<?php echo $row4['U_Spelersnummer']; ?> , '2')" value="+2">
+																+2
+															</button>														
+														</div>
+													</div>
+												</td>
+												<td>
+													<div class="input-group">
+														<div class="btn-group" role="group" aria-label="Basic example">  
+															<button type="button" class="btn btn-info btn-number5" data-type="minus" data-field="strafuit<?php echo $row4['U_Spelersnummer']; ?>" id="<?php echo $row4['U_Spelersnummer']; ?>" onclick="decrstraf2('strafuit<?php echo $row4['U_Spelersnummer']; ?>', 'uit'); Strafminutenmin(<?php echo $row4['U_Spelersnummer']; ?> , '2')" value="-5">
+																-5
+															</button>														                 
+															<button type="button" class="btn btn-warning btn-number5" data-type="plus" data-field="strafuit<?php echo $row4['U_Spelersnummer']; ?>" id="<?php echo $row4['U_Spelersnummer']; ?>" onclick="incrstraf2('strafuit<?php echo $row4['U_Spelersnummer']; ?>', 'uit'); Strafminutenplus(<?php echo $row4['U_Spelersnummer']; ?> , '2')" value="+5">
+																+5
+															</button>
+														</div>
+													</div>
+												</td>																																			
+												<td>
+													<div class="ckbox" align="center">
+														<input type="hidden" name="Rooduit[]" value="0" />												
+														<input type="checkbox" name="Rooduit[]" id="rooduit"  value="10"  onclick="Strafminuten10(<?php echo $row4['U_Spelersnummer']; ?>)" />
+													</div>
+												</td>
+											</tr>											
+											<?php
+											$r++;
+											}
+											?>							
+										</tbody>
+									</table>
+								</div>
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-12">
+								<p>&nbsp;</p>
+							</div>			
+						</div>				
+						<div class="row" align="center">
+							<div class="col-12" align="center">
+								<button type="button" class="btn btn-danger btn-lg btn-block">Spelers met een rode achtergrond zijn geschorst!</button>
+							</div>			
+						</div>	
+						<div class="row">
+							<div class="col-12">
+								<p>&nbsp;</p>
+							</div>			
+						</div>		
+						<div class="row">
+							<div class="col-6">
+								<div class="table-responsive">
+									<table class="table table-striped table-condensed table-bordered">
+										<thead>
+											<tr>
+												<th class="col-md-3">#</th>
+												<th class="col-md-3">Aanwezig</th>
+											</tr>
+										</thead>
+										<tbody>
+											<tr>
+												<td>		
+													<p>Grensrechter</p>
+												</td>							
+												<td>		
+													<select name="Vlaggerthuis">
+														<option value="NEE">NEE</option>
+														<option value="JA" selected>JA</option>
+													</select>
+												</td>
+											</tr>
+											<tr>
+												<td>		
+													<p>Team</p>
+												</td>							
+												<td>		
+													<select name="Teamthuis">
+														<option value="NEE">NEE</option>
+														<option value="JA" selected>JA</option>
+													</select>
+												</td>
+											</tr>							
+										</tbody>
+									</table>
+								</div>
+							</div>
+							<div class="col-6">
+								<div class="table-responsive">
+									<table class="table table-striped table-condensed table-bordered">
+										<thead>
+											<tr>
+												<th class="col-md-3">#</th>
+												<th class="col-md-3">Aanwezig</th>
+											</tr>
+										</thead>
+										<tbody>
+											<tr>
+												<td>		
+													<p>Grensrechter</p>
+												</td>							
+												<td>		
+													<select name="Vlaggeruit">
+														<option value="NEE">NEE</option>
+														<option value="JA" selected>JA</option>
+													</select>
+												</td>
+											</tr>
+											<tr>
+												<td>		
+													<p>Team</p>
+												</td>							
+												<td>		
+													<select name="Teamuit">
+														<option value="NEE">NEE</option>
+														<option value="JA" selected>JA</option>
+													</select>
+												</td>
+											</tr>							
+										</tbody>
+									</table>
+								</div>
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-12">
+								<table class="table table-striped table-condensed table-bordered">
+									<thead>
+										<tr>
+											<th class="col-md-12">Gestaakt</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td>		
+												<select name="Gestaakt">
+													<option value="NEE" selected>NEE</option>
+													<option value="JA">JA</option>
+												</select>
+											</td>																						
+										</tr>					
+									</tbody>
+								</table>			
+							</div>			
+						</div>		
+						<div class="row">
+							<div class="col-12">
+								<p>&nbsp;</p>
+							</div>			
+						</div>				
+						<div class="row">
+							<div class="col-12">
+								<input type="Submit" name="submit" class="btn btn-secondary btn-lg" value="Wedstrijd afgelopen en formulier opslaan!">
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-12">
+								<p>&nbsp;</p>
+							</div>			
+						</div>		
+					</form>	
+				</div> 
+
+				<?php
+
+				// Als de submit button is ingedrukt doe het volgende 
+				if(isset($_POST['submit']))
+				{			
+
+				$deelnemerthuis 		= $_POST['Deelnemerthuis']; 
+				$vlaggerthuis 			= $_POST['Vlaggerthuis']; 
+				$teamthuis 				= $_POST['Teamthuis']; 
+				$roodthuis 				= $_POST['Roodthuis'];
+				$gestaakt 				= $_POST['Gestaakt'];
+				$deelnemeruit 			= $_POST['Deelnemeruit']; 
+				$vlaggeruit 			= $_POST['Vlaggeruit']; 
+				$teamuit 				= $_POST['Teamuit']; 
+				$rooduit 				= $_POST['Rooduit'];
+
+				// Livescore tabel bijwerken
+				$eindtijd = date("H:i:s");
+				$wpdb->update( 
+					'srza_Livescore', 
+					array( 
+						'Afgelopen' => '1',
+						'Eindtijd' => $eindtijd
+					), 
+					array( 'WedstrijdID' => $q )
+				);				
+
+				// Haal 10 minuten van de strafminuten af als de speler inderdaad afwezig was
+				$wpdb->query("UPDATE srza_Deelnemers sds 
+					          SET sds.MinutenStrafVerwerkt = sds.MinutenStrafVerwerkt-'10' 
+					          WHERE sds.Deelnemer IN (SELECT Deelnemer 
+					                                  FROM srza_WedstrijdStatistieken swn 
+					                                  WHERE swn.Aanwezig = '0' 
+					                                  AND swn.Wedstrijdid = '" . $q . "') 
+					          AND sds.MinutenStrafVerwerkt >= 10
+						");				
+										
+				// Begin boete vlagger thuis
+				if ($teamthuis != "NEE")
+				{
+					if ($vlaggerthuis == "NEE")
+					{
+					// Boete in de DB zetten
+					$wpdb->insert(
+							'srza_Boetes', 
+							array(
+							   'wedstrijdid' 	=> $q,
+							   'bedrag' 		=> $Boetegrens,
+							   'teamid' 		=> $ThuisteamID,
+							   'soort' 			=> 'Vlagger',
+							   'betaald' 		=> 'NEE'
+							   	));															
+					// Boete weer uit de DB halen omdat Fact NR automatisch is aangemaakt en die hebben we nodig
+					$sqlVlaggerthuis = $wpdb->get_results	
+									("							
+									SELECT factuurid 
+									FROM srza_Boetes 
+									WHERE wedstrijdid = '" . $q . "' 
+									AND teamid = '" . $ThuisteamID . "'
+									", ARRAY_A
+									);											
+					foreach ($sqlVlaggerthuis as $rowsqlResultboeteThuis2) 			
+						{
+						$factuurnummerthuis = $rowsqlResultboeteThuis2['factuurid'];
+						}
+					// Mail naar contactpersoon
+					$fvthuis = "https://www.srza.nl/custom/facturen/factuur_verzenden.php?factuur=" . $factuurnummerthuis . "";
+	
+					$ch = curl_init();
+
+					curl_setopt($ch,CURLOPT_URL, $fvthuis);
+					curl_setopt($ch,CURLOPT_POST, true);
+					$result = curl_exec($ch);	
+					}
+				}
+				// Begin boete vlagger uit
+				if ($teamuit != "NEE")
+				{
+					if ($vlaggeruit == "NEE")
+					{
+					// Boete in de DB zetten
+					$wpdb->insert(
+							'srza_Boetes', 
+							array(
+							   'wedstrijdid' 	=> $q,
+							   'bedrag' 		=> $Boetegrens,
+							   'teamid' 		=> $UitteamID,
+							   'soort' 			=> 'Vlagger',
+							   'betaald' 		=> 'NEE'
+							   	));	
+					// Boete weer uit de DB halen omdat Fact NR automatisch is aangemaakt en die hebben we nodig
+					$sqlVlaggeruit = $wpdb->get_results	
+									("							
+									SELECT factuurid 
+									FROM srza_Boetes 
+									WHERE wedstrijdid = '" . $q . "' 
+									AND teamid = '" . $UitteamID . "'
+									", ARRAY_A
+									);											
+					foreach ($sqlVlaggeruit as $rowsqlResultboeteUit2) 			
+						{
+						$factuurnummeruit = $rowsqlResultboeteUit2['factuurid'];
+						}
+					// Mail naar contactpersoon
+					$fvuit = "https://www.srza.nl/custom/facturen/factuur_verzenden.php?factuur=" . $factuurnummeruit . "";
+
+					$ch = curl_init();
+
+					curl_setopt($ch,CURLOPT_URL, $fvuit);
+					curl_setopt($ch,CURLOPT_POST, true);
+					$result = curl_exec($ch);					
+						
+
+					}
+				}
+				// Begin boete niet op komen dagen thuisteam
+				if ($teamthuis == "NEE")
+				{
+					// Boete in DB zetten
+					$wpdb->insert(
+							'srza_Boetes', 
+							array(
+							   'wedstrijdid' 	=> $q,
+							   'bedrag' 		=> $BoeteNietOpDagen,
+							   'teamid' 		=> $ThuisteamID,
+							   'soort' 			=> 'Aanwezig',
+							   'betaald' 		=> 'NEE'
+							   	));															
+					// Boete weer uit de DB halen omdat Fact NR automatisch is aangemaakt en die hebben we nodig
+					$sqlTeamthuis = $wpdb->get_results	
+									("							
+									SELECT factuurid 
+									FROM srza_Boetes 
+									WHERE wedstrijdid = '" . $q . "' 
+									AND teamid = '" . $ThuisteamID . "'
+									", ARRAY_A
+									);											
+					foreach ($sqlTeamthuis as $rowsqlTeamThuis) 			
+						{
+						$factuurnummerteamthuis = $rowsqlTeamThuis['factuurid'];
+						}
+						// Mail naar contactpersoon
+						$fvthuisopdagen = "https://www.srza.nl/custom/facturen/factuur_verzenden.php?factuur=" . $factuurnummerteamthuis . "";
+
+						$ch = curl_init();
+
+						curl_setopt($ch,CURLOPT_URL, $fvthuisopdagen);
+						curl_setopt($ch,CURLOPT_POST, true);
+						$result = curl_exec($ch);							
+											
+					}
+				// Begin boete niet op komen dagen uitteam
+				if ($teamuit == "NEE")
+				{
+					$wpdb->insert(
+							'srza_Boetes', 
+							array(
+							   'wedstrijdid' 	=> $q,
+							   'bedrag' 		=> $BoeteNietOpDagen,
+							   'teamid' 		=> $UitteamID,
+							   'soort' 			=> 'Aanwezig',
+							   'betaald' 		=> 'NEE'
+							   	));	
+					// Boete weer uit de DB halen omdat Fact NR automatisch is aangemaakt en die hebben we nodig
+					$sqlTeamuit = $wpdb->get_results	
+									("							
+									SELECT factuurid 
+									FROM srza_Boetes 
+									WHERE wedstrijdid = '" . $q . "' 
+									AND teamid = '" . $UitteamID . "'
+									", ARRAY_A
+									);											
+					foreach ($sqlTeamuit as $rowsqlTeamUit) 			
+						{
+						$factuurnummerteamuit = $rowsqlTeamUit['factuurid'];
+						}
+									
+					// Mail naar contactpersoon
+					$fvuitopdagen = "https://www.srza.nl/custom/facturen/factuur_verzenden.php?factuur=" . $factuurnummerteamuit . "";
+
+					$ch = curl_init();
+
+					curl_setopt($ch,CURLOPT_URL, $fvuitopdagen);
+					curl_setopt($ch,CURLOPT_POST, true);
+					$result = curl_exec($ch);					
+					
+				}
+				// Verwerken van de uitslag
+				if ($teamthuis == "NEE" || $teamuit == "NEE" || $gestaakt == "JA")
+					{
+					// Wanneer het thuisteam afwezig is
+					if ($teamthuis == "NEE")
+						{
+						$wpdb->query("
+										UPDATE srza_Wedstrijd 
+										SET 
+										DoelpuntenT = '0',
+										DoelpuntenU = '5'
+										WHERE ID = '" . $q . "'
+						");						
+						$wpdb->query("
+										UPDATE srza_Teams 
+										SET Minpunten = Minpunten+'3'
+										WHERE Relatienummer = '" . $ThuisteamID . "'
+						");						
+						} 
+					// Wanneer het uitteam afwezig is		
+					elseif ($teamuit == "NEE")
+						{
+						$wpdb->query("
+										UPDATE srza_Wedstrijd 
+										SET 
+										DoelpuntenT = '5',
+										DoelpuntenU = '0'
+										WHERE ID = '" . $q . "'
+						");	
+						$wpdb->query("
+										UPDATE srza_Teams 
+										SET Minpunten = Minpunten+'3'
+										WHERE Relatienummer = '" . $UitteamID . "'
+						");
+						} 
+					// Wanneer de wedstrijd gestaakt is		
+					elseif ($gestaakt == "JA")
+						{
+
+						$zaalc = $wpdb->get_results	
+									("							
+									SELECT Zaalcommissaris AS zc
+									FROM srza_Wedstrijddagen 
+									WHERE Halnummer = '" . $Halnummer . "' 
+									AND Wedstrijddatum = '" . $Wedstrijddatum2 . "'
+									", ARRAY_A
+									);
+
+						$wpdb->insert(
+							'srza_Strafzaak', 
+							array(
+							   'aanleiding' 	=> 'GESTAAKT',
+							   'wedstrijdnr' 	=> $q,
+							   'scheids' 		=> $Scheids,
+							   'zaalc' 			=> $zaalc[0]['zc'],
+							   'startdatum' 	=> $Wedstrijddatum2
+							   	));														
+						}
+						// SQL om Strafdossier ID op te halen
+						$sqlgestaakt = $wpdb->get_results	
+									("							
+									SELECT id 
+									FROM srza_Strafzaak 
+									WHERE wedstrijdnr = '" . $q . "' 
+									", ARRAY_A
+									);											
+						foreach ($sqlgestaakt as $rowsqlgestaakt) 			
+						{
+						$gestaaktid = $rowsqlgestaakt['id'];
+						}
+						// Mail naar contactpersoon					
+						$gestaaktcontactpersoon = "https://www.srza.nl/custom/strafzaak/strafzaak_contactpersoon.php?q=" . $gestaaktid . "";
+
+						$ch = curl_init();
+
+						curl_setopt($ch,CURLOPT_URL, $gestaaktcontactpersoon);
+						curl_setopt($ch,CURLOPT_POST, true);
+						$result = curl_exec($ch);	
+												
+						// Mail naar strafcommissie
+						$gestaaktstrafcommissie = "https://www.srza.nl/custom/strafzaak/strafzaak_strafcommissie.php?q=" . $gestaaktid . "";
+
+						$ch = curl_init();
+
+						curl_setopt($ch,CURLOPT_URL, $gestaaktstrafcommissie);
+						curl_setopt($ch,CURLOPT_POST, true);
+						$result = curl_exec($ch);						
+
+						// Mail naar scheidsrechter en zaalcommissaris
+						$gestaaktvrijwilliger = "https://www.srza.nl/custom/strafzaak/strafzaak_scheids.php?q=" . $gestaaktid . "";
+
+						$ch = curl_init();
+
+						curl_setopt($ch,CURLOPT_URL, $gestaaktvrijwilliger);
+						curl_setopt($ch,CURLOPT_POST, true);
+						$result = curl_exec($ch);						
+												
+					} 												
+					// Check of alles is uitgevoerd en dan door naar de volgende wedstrijd
+
+					$sqlcheck2 = $wpdb->get_results	("
+													SELECT WedstrijdID 
+													FROM srza_Livescore 
+													WHERE Afgelopen = '1'
+													AND WedstrijdID = '" . $q . "'
+													", ARRAY_A
+													);
+					$check2 =  $wpdb->num_rows;
+					if ($check2 == "1")
+					{						
+					?>
+					<script type="text/javascript">
+ 					window.location="<?php echo $nextpage; ?>";
+					</script>
+					<?php					
+					}
+				}					
+									
+			}
+			else
+			{
+			?>
+			<br /><br />
+			<div class="container">
+				<div class="jumbotron">
+			  		<h1>Oeps, er gaat iets mis!</h1>
+			  		<p>De wedstrijd lijkt al verwerkt te zijn. Klik hier onder om door te gaan naar de volgende wedstrijd.</p>
+			  		<?php 
+			  		echo "<a class='btn btn-primary btn-lg' href='" . $nextpage . "' role='button'>Volgende wedstrijd</a>";
+			  		?>
+			  		</p>
+				</div>
+			</div>
+			<?php
+			}
+		}
+		else
+		{
+			?>
+			<br /><br />
+			<div class="container">
+				<div class="jumbotron">
+			  		<h1>Oeps, er gaat iets mis!</h1>
+			  		<p>Je hebt onvoldoende rechten om deze pagina te bekijken. Klik hier onder om terug te gaan naar de beginpagina.</p>
+			  		<p><a class="btn btn-primary btn-lg" href="https://www.srza.nl" role="button">Beginpagina</a></p>
+				</div>
+			</div>
+			<?php
+		}
+	}
+	else
+	{
+		?>
+		<br /><br />
+		<div class="container">
+			<div class="jumbotron">
+				<h1>Oeps, er gaat iets mis!</h1>
+				<p>Je bent niet ingelogd. Klik hier onder om terug te gaan naar de beginpagina zodat je kunt inloggen.</p>
+				<p><a class="btn btn-primary btn-lg" href="https://www.srza.nl" role="button">Beginpagina</a></p>
+			</div>
+		</div>
+		<?php
+	}
+}
+else
+{
+	?>
+	<br /><br />
+	<div class="container">
+		<div class="jumbotron">
+			<h1>Oeps, er gaat iets mis!</h1>
+			<p>Er is geen wedstrijd geselecteerd. Klik hier onder om terug te gaan naar de beginpagina zodat je opnieuw kunt beginnen.</p>
+			<p><a class="btn btn-primary btn-lg" href="https://www.srza.nl" role="button">Beginpagina</a></p>
+		</div>
+	</div>
+	<?php
+}
+
+?>
+
+<script src="https://www.srza.nl/custom/js/score.js"></script>  
+<script src="https://www.srza.nl/custom/js/jquery.taskTimer.js"></script> 
+<script src="https://www.srza.nl/custom/js/timer.js"></script> 
+
+<script>
+// Database update livescore (tijd) - 1 keer per 60 seconden
+setInterval(ajaxCall, 60000);
+
+function ajaxCall() {
+if (window.XMLHttpRequest) {
+    xmlhttp=new XMLHttpRequest();
+  } else {
+    xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+  }
+  secondsgoal = getTime();
+  var urlparam = ("q=<?php echo $q; ?>&q2="+secondsgoal);    
+  var URL2 = "/custom/wedstrijden/livescoretijd.php?"+urlparam;
+  var URL = window.location.origin+URL2;    
+
+  xmlhttp.open("POST",URL,true);
+  xmlhttp.send();
+  delete secondsgoal;
+
+  }
+</script>
+<script>
+// Database update bij een thuis of uit doelpunt
+function Doelpuntplus(speler, team) {
+if (window.XMLHttpRequest) {
+    xmlhttp=new XMLHttpRequest();
+  } else {
+    xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+  } 
+  var secondsgoal = getTime();
+  var urlparam = ("q=<?php echo $q; ?>&q2="+secondsgoal+"&q3="+speler+"&q4="+team);
+  var URL2 = "/custom/wedstrijden/doelpuntplus.php?"+urlparam;
+  var URL = window.location.origin+URL2; 
+    
+  xmlhttp.open("POST",URL,true);  
+  xmlhttp.send();
+  }
+</script>
+<script>
+// Database update bij een foutieve invoer uitdoelpunt
+function Doelpuntmin(speler, team) {
+if (window.XMLHttpRequest) {
+    // code for IE7+, Firefox, Chrome, Opera, Safari
+    xmlhttp=new XMLHttpRequest();
+  } else { // code for IE6, IE5
+    xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+  }
+  var urlparam = ("q="+team+"&q2=<?php echo $q; ?>&q3="+speler);
+  var URL2 = "/custom/wedstrijden/doelpuntmin.php?"+urlparam;
+  var URL = window.location.origin+URL2;    
+
+  xmlhttp.open("POST",URL,true);    
+  xmlhttp.send();
+  }
+</script>
+<script>
+// Database update bij een groene kaart
+function Strafminutenplus(speler, aantal) {
+if (window.XMLHttpRequest) {
+    xmlhttp=new XMLHttpRequest();
+  } else {
+    xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+  }
+  var secondsgoal = getTime();
+  var urlparam = ("q=<?php echo $q; ?>&q2="+secondsgoal+"&q3="+speler+"&q4="+aantal);
+  var URL2 = "/custom/wedstrijden/strafminutenplus.php?"+urlparam;
+  var URL = window.location.origin+URL2;    
+
+  xmlhttp.open("POST",URL,true);  
+  xmlhttp.send();
+  }
+</script>
+<script>
+// Database update bij een foutieve invoer groene kaart
+function Strafminutenmin(speler, aantal) {
+if (window.XMLHttpRequest) {
+    xmlhttp=new XMLHttpRequest();
+  } else {
+    xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+  }
+  var secondsgoal = getTime();
+  var urlparam = ("q=<?php echo $q; ?>&q2="+secondsgoal+"&q3="+speler+"&q4="+aantal);
+  var URL2 = "/custom/wedstrijden/strafminutenmin.php?"+urlparam;
+  var URL = window.location.origin+URL2;    
+
+  xmlhttp.open("POST",URL,true);    
+  xmlhttp.send();
+  }
+</script>
+<script>
+// Database update bij een foutieve invoer groene kaart
+function Strafminuten10(speler) {
+if (window.XMLHttpRequest) {
+    xmlhttp=new XMLHttpRequest();
+  } else {
+    xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+  }
+  var secondsgoal = getTime();
+  var urlparam = ("q=<?php echo $q; ?>&q2="+secondsgoal+"&q3="+speler);
+  var URL2 = "/custom/wedstrijden/strafminuten10.php?"+urlparam;
+  var URL = window.location.origin+URL2;    
+
+  xmlhttp.open("POST",URL,true);    
+  xmlhttp.send();
+  }
+</script>
+<script>
+function SpelerAanwezig(str) {
+if (window.XMLHttpRequest) {
+    xmlhttp=new XMLHttpRequest();
+  } else {
+    xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+  }
+  var urlparam = ("q=<?php echo $q; ?>&q2="+str);
+  var URL2 = "/custom/wedstrijden/speleraanwezig.php?"+urlparam;
+  var URL = window.location.origin+URL2;    
+
+  xmlhttp.open("POST",URL,true);   
+  xmlhttp.send();
+  }
+</script>
+   
+    <?php
+$wpdb->mysql_close    
+    ?>
+</body>
+</html>
